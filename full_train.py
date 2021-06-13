@@ -119,6 +119,7 @@ class RL(nn.Module):
             nn.BatchNorm2d(3),
             nn.ReLU(),
         )
+        self.img_size=img_size
         self.emd = nn.Embedding(num_classes, img_size*img_size)
     def forward(self, x,labels):
         emd = self.emd(labels).view(labels.shape[0], 1, self.img_size, self.img_size)
@@ -270,6 +271,7 @@ def main():
         optimizer_rl, float(args.epochs), eta_min=args.learning_rate_min)
 
     architect = Architect(model, args)
+    #architect= 0
 
 
     for epoch in range(args.epochs):
@@ -349,28 +351,28 @@ def train(train_queue, valid_queue,
         logits = model(input_search)
         loss = criterion(logits, target_search)
 
-        labels=-1
         for i in range(CIFAR_CLASSES):
-            #labels = torch.zeros([args.m]).cuda()
-            labels+=i
+            z = torch.zeros([args.m],dtype=torch.int).cuda()
+            for j in range(args.m):
+                z[j]=i
             noise = torch.randn(args.m, args.Z_DIM, 1, 1).cuda()
-            fake = g(noise,i)
+            fake = g(noise,z)
             if i==0:
-                z = (l[i])*(model._loss(fake,labels))
+                ze = (l[i])*(model._loss(fake,z))
             else:
-                z=z+(l[i])*(model._loss(fake,labels))
+                ze=z+(l[i])*(model._loss(fake,z))
         alpha = 1.0
-        loss= loss+ alpha*z
+        loss= loss+ alpha*ze
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
         optimizer.step()
 
         for _ in range(args.CRITIC_ITERATIONS):
             noise = torch.randn(n, args.Z_DIM, 1, 1).cuda()
-            fake = g(noise,target_search)
-            d_real = bc(d(rl(input_search,target_search))).reshape(-1)
-            d_fake = bc(d(rl(fake,target_search))).reshape(-1)
-            gp = CGAN.gradient_penalty(d, bc,rl, target_search, input_search, fake, device=args.device)
+            fake = g(noise,target)
+            d_real = bc(d(rl(input,target))).reshape(-1)
+            d_fake = bc(d(rl(fake,target))).reshape(-1)
+            gp = CGAN.gradient_penalty(d, bc,rl, target, input, fake, device=args.device)
             loss_critic = (
                 -(torch.mean(d_real) - torch.mean(d_fake)) + args.LAMBDA_GP * gp
             )
@@ -381,6 +383,9 @@ def train(train_queue, valid_queue,
             optimizer_bc.step()
             optimizer_d.step()
             optimizer_rl.step()
+
+        noise = torch.randn(n, args.Z_DIM, 1, 1).cuda()        
+        fake = g(noise,target)
         gen_fake = bc(d(rl(fake,target_search))).reshape(-1)
         loss_gen = -torch.mean(gen_fake)
         optimizer_g.zero_grad()
@@ -395,6 +400,15 @@ def train(train_queue, valid_queue,
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
         optimizer.step()
+        prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
+        objs.update(loss.item(), n)
+        top1.update(prec1.item(), n)
+        top5.update(prec5.item(), n)
+
+        if step % args.report_freq == 0:
+            logging.info('train %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
+
+    return top1.avg, objs.avg
         
 
 
