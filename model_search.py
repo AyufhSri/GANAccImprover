@@ -135,6 +135,9 @@ class Network(nn.Module):
   def arch_parameters(self):
     return self._arch_parameters
 
+  def set_archparameters(self,z):
+    self._arch_parameters=z
+
   def genotype(self):
 
     def _parse(weights):

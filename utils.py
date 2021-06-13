@@ -9,20 +9,16 @@ from torch.autograd import Variable
 
 
 
-def label_level_loss(model,dataloader,criterion,args):
+def label_level_loss(model,data, target,criterion,args):
     model.eval()
     n=10
     if args.is_cifar100:
         n=100
     l=[0]*n
     with torch.no_grad():
-        for data, target in dataloader:
-            data, targetx = data.cuda(), target.cuda()
-            output = model(data)
-            loss = criterion(output,targetx)
-            for i in range(data.shape[0]):
-                l[int(target[i])]+=loss[i]
-    l /= len(dataloader.dataset)
+        output = model(data)
+        for i in range(data.shape[0]):
+            l[int(target[i])]+=(criterion(output[i].reshape([1,n]),target[i].reshape([1])))/data.shape[0]
     return l
 
 

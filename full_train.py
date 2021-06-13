@@ -342,7 +342,7 @@ def train(train_queue, valid_queue,
 
         architect.step(input, target, input_search, target_search, lr, optimizer, unrolled=args.unrolled)
 
-        l = utils.label_level_loss(model,input_search, target_search,n)
+        l = utils.label_level_loss(model,input_search, target_search, criterion, args)
 
         d.set_archparameters(model.arch_parameters)
         optimizer.zero_grad()
@@ -366,11 +366,11 @@ def train(train_queue, valid_queue,
         optimizer.step()
 
         for _ in range(args.CRITIC_ITERATIONS):
-            noise = torch.randnn(n, args.Z_DIM, 1, 1).cuda()
-            fake = g(noise,target)
-            d_real = bc(d(rl(input,target))).reshape(-1)
-            d_fake = bc(d(rl(fake,target))).reshape(-1)
-            gp = CGAN.gradient_penalty(d, bc,rl, target, input, fake, device=args.device)
+            noise = torch.randn(n, args.Z_DIM, 1, 1).cuda()
+            fake = g(noise,target_search)
+            d_real = bc(d(rl(input_search,target_search))).reshape(-1)
+            d_fake = bc(d(rl(fake,target_search))).reshape(-1)
+            gp = CGAN.gradient_penalty(d, bc,rl, target_search, input_search, fake, device=args.device)
             loss_critic = (
                 -(torch.mean(d_real) - torch.mean(d_fake)) + args.LAMBDA_GP * gp
             )
@@ -381,7 +381,7 @@ def train(train_queue, valid_queue,
             optimizer_bc.step()
             optimizer_d.step()
             optimizer_rl.step()
-        gen_fake = bc(d(rl(fake,target))).reshape(-1)
+        gen_fake = bc(d(rl(fake,target_search))).reshape(-1)
         loss_gen = -torch.mean(gen_fake)
         optimizer_g.zero_grad()
         loss_gen.backward()
