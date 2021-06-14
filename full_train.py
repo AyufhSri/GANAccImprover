@@ -353,7 +353,7 @@ def train(train_queue, valid_queue,
         loss = criterion(logits, target_search)
 
         for i in range(CIFAR_CLASSES):
-            z = torch.zeros([args.m],dtype=torch.int).cuda()
+            z = torch.zeros([args.m],dtype=torch.long).cuda()
             for j in range(args.m):
                 z[j]=i
             noise = torch.randn(args.m, args.Z_DIM, 1, 1).cuda()
