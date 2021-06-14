@@ -88,6 +88,7 @@ parser.add_argument('--GEN_EMBEDDING', type=int, default=100)
 parser.add_argument('--LAMBDA_GP', type=int, default=10)
 parser.add_argument('--FEATURES_GEN', type=int, default=16)
 parser.add_argument('--CRITIC_ITERATIONS', type=int, default=5)
+parser.add_argument('--device',default="cuda")
 args = parser.parse_args()
 
 
@@ -372,7 +373,7 @@ def train(train_queue, valid_queue,
             fake = g(noise,target)
             d_real = bc(d(rl(input,target))).reshape(-1)
             d_fake = bc(d(rl(fake,target))).reshape(-1)
-            gp = CGAN.gradient_penalty(d, bc,rl, target, input, fake, device=args.device)
+            gp = CGAN.gradient_penalty2(d, bc,rl, target, input, fake, device=args.device)
             loss_critic = (
                 -(torch.mean(d_real) - torch.mean(d_fake)) + args.LAMBDA_GP * gp
             )
