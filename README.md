@@ -5,4 +5,4 @@
 python full_train.py
 ````
 
-See full_train.py args to have a better understanding about the dataset
+See args in full_train.py to have a better understanding about the model hyperparameters 
